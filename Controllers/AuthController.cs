@@ -1,0 +1,160 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using MergeCat.Configuration;
+using MergeCat.Models.DTO;
+using MergeCat.Services.Token;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Nethereum.Signer;
+
+namespace MergeCat.Controllers;
+
+[ApiController]
+[Route("auth")]
+public class AuthController(
+    IOptions<EnvVariables> env,
+    IUserIdentity userIdentity,
+    IMemoryCache cache
+) : ControllerBase
+{
+    private readonly EnvVariables _env = env.Value;
+    private readonly IMemoryCache _cache = cache;
+
+    [HttpPost("verify")]
+    public IActionResult Authenticate([FromBody] AuthenticationRequest request)
+    {
+        var nonce = ExtractNonceFromMessage(request.Message);
+
+        if (nonce is null)
+            return Unauthorized(new { message = "Nonce not found in message" });
+
+        if (!_cache.TryGetValue($"nonce: {nonce}", out _))
+            return Unauthorized(new { message = "Invalid or expired nonce" });
+
+        _cache.Remove($"nonce: {nonce}");
+
+        var signer = new EthereumMessageSigner();
+        var recoveredAddress = signer.EncodeUTF8AndEcRecover(request.Message, request.Signature);
+
+        if (string.IsNullOrEmpty(recoveredAddress))
+            return Unauthorized(new { message = "Invalid signature" });
+
+        var accessToken = CreateToken(recoveredAddress);
+        SetCookie(accessToken, HttpContext);
+
+        return Ok(new { message = "Authentication successful" });
+    }
+
+    [HttpGet("nonce")]
+    public IActionResult Nonce()
+    {
+        var nonce = GenerateSecureNonce();
+        _cache.Set($"nonce: {nonce}", true, TimeSpan.FromMinutes(5));
+
+        return Ok(new { nonce });
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        var address = userIdentity.GetAddress(HttpContext.User);
+
+        if (string.IsNullOrEmpty(address))
+            return Unauthorized("Invalid or missing JWT token");
+
+        return Ok(new { address });
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        RemoveCookie(HttpContext);
+
+        return Ok();
+    }
+
+    private string CreateToken(string address)
+    {
+        var normalizedAddress = address.ToLowerInvariant();
+
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Claims = new Dictionary<string, object>
+            {
+                { JwtRegisteredClaimNames.Sub, normalizedAddress },
+                { "address", normalizedAddress },
+            },
+            IssuedAt = DateTime.UtcNow,
+            Expires = DateTime.UtcNow.AddDays(30),
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_env.JwtTokenSecret)),
+                SecurityAlgorithms.HmacSha512Signature
+            ),
+        };
+
+        var handler = new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler();
+
+        return handler.CreateToken(descriptor);
+    }
+
+    private void SetCookie(string accessToken, HttpContext httpContext)
+    {
+        httpContext.Response.Cookies.Append(
+            _env.CookieName,
+            accessToken,
+            new CookieOptions
+            {
+                Path = "/",
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(30),
+            }
+        );
+    }
+
+    private void RemoveCookie(HttpContext httpContext)
+    {
+        httpContext.Response.Cookies.Delete(
+            _env.CookieName,
+            new CookieOptions
+            {
+                Path = "/",
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTimeOffset.UnixEpoch,
+            }
+        );
+    }
+
+    private static string GenerateSecureNonce(int length = 32)
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var nonce = new char[length];
+        using var rng = RandomNumberGenerator.Create();
+        var buffer = new byte[sizeof(uint)];
+
+        for (int i = 0; i < length; i++)
+        {
+            rng.GetBytes(buffer);
+            uint num = BitConverter.ToUInt32(buffer, 0);
+            nonce[i] = chars[(int)(num % (uint)chars.Length)];
+        }
+
+        return new string(nonce);
+    }
+
+    private static string? ExtractNonceFromMessage(string message)
+    {
+        var match = Regex.Match(message, @"Nonce:\s*([a-zA-Z0-9]+)");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+}
