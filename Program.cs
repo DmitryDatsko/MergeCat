@@ -74,7 +74,7 @@ builder.Services.AddCors(options =>
                         :
                         [
                             "http://localhost:3000",
-                            "https://miniature-winner-jvg9gxv5776fg6j-3000.app.github.dev/",
+                            "https://miniature-winner-jvg9gxv5776fg6j-3000.app.github.dev",
                         ]
                 )
                 .AllowAnyHeader()
@@ -87,10 +87,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<IUserIdentity, UserIdentity>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddMemoryCache();
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
-app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors(myAllowSpecificOrigins);
 app.UseCookiePolicy(
