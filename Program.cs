@@ -70,8 +70,12 @@ builder.Services.AddCors(options =>
             policyBuilder
                 .WithOrigins(
                     builder.Environment.IsProduction()
-                        ? string.Empty // temporary empty
-                        : "http://localhost:3000"
+                        ? [] // temporary empty
+                        :
+                        [
+                            "http://localhost:3000",
+                            "https://miniature-winner-jvg9gxv5776fg6j-3000.app.github.dev/",
+                        ]
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
