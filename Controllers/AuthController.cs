@@ -123,6 +123,8 @@ public class AuthController(
                 { JwtRegisteredClaimNames.Sub, player.Id.ToString() },
                 { "address", player.WalletAddress.Value },
             },
+            Audience = _env.Audience,
+            Issuer = _env.Issuer,
             IssuedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddDays(30),
             SigningCredentials = new SigningCredentials(
