@@ -24,7 +24,7 @@ public class AuthController(
     IUserIdentity userIdentity,
     IMemoryCache cache,
     ApiDbContext db
-) : ControllerBase
+) : AuthorizedControllerBase
 {
     private readonly EnvVariables _env = env.Value;
     private readonly IMemoryCache _cache = cache;
@@ -99,12 +99,10 @@ public class AuthController(
     [HttpGet("me")]
     public IActionResult Me()
     {
-        var address = userIdentity.GetAddress(HttpContext.User);
-
-        if (string.IsNullOrEmpty(address))
+        if (string.IsNullOrEmpty(CurrentAddress))
             return Unauthorized("Invalid or missing JWT token");
 
-        return Ok(new { address });
+        return Ok(new { CurrentAddress });
     }
 
     [Authorize]
