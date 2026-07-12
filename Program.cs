@@ -1,6 +1,7 @@
 using System.Text;
 using MergeCat.Configuration;
 using MergeCat.Context;
+using MergeCat.Services;
 using MergeCat.Services.Token;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.CookiePolicy;
@@ -70,7 +71,7 @@ builder.Services.AddCors(options =>
                 .WithOrigins(
                     builder.Environment.IsProduction()
                         ? string.Empty // temporary empty
-                        : "https://localhost:3000"
+                        : "http://localhost:3000"
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()
@@ -80,6 +81,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<IUserIdentity, UserIdentity>();
+builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddOpenApi();
 

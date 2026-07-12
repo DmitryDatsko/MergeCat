@@ -3,10 +3,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using MergeCat.Configuration;
+using MergeCat.Context;
+using MergeCat.Models;
 using MergeCat.Models.DTO;
 using MergeCat.Services.Token;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -19,14 +22,15 @@ namespace MergeCat.Controllers;
 public class AuthController(
     IOptions<EnvVariables> env,
     IUserIdentity userIdentity,
-    IMemoryCache cache
+    IMemoryCache cache,
+    ApiDbContext db
 ) : ControllerBase
 {
     private readonly EnvVariables _env = env.Value;
     private readonly IMemoryCache _cache = cache;
 
     [HttpPost("verify")]
-    public IActionResult Authenticate([FromBody] AuthenticationRequest request)
+    public async Task<IActionResult> Authenticate([FromBody] AuthenticationRequest request)
     {
         var nonce = ExtractNonceFromMessage(request.Message);
 
@@ -44,7 +48,39 @@ public class AuthController(
         if (string.IsNullOrEmpty(recoveredAddress))
             return Unauthorized(new { message = "Invalid signature" });
 
-        var accessToken = CreateToken(recoveredAddress);
+        var normalizedAddress = EthereumAddress.Parse(recoveredAddress);
+        var player = await db.Players.FirstOrDefaultAsync(p =>
+            p.WalletAddress == normalizedAddress
+        );
+
+        if (player is null)
+        {
+            player = new Player
+            {
+                WalletAddress = normalizedAddress,
+                Balance = _env.StartingBalance,
+                TotalEarned = 0,
+                IncomeRate = 0,
+                LastCollectedAt = DateTime.UtcNow,
+            };
+
+            db.Players.Add(player);
+            await db.SaveChangesAsync();
+
+            var cells = Enumerable
+                .Range(0, _env.BoardSize)
+                .Select(i => new Cell
+                {
+                    PlayerId = player.Id,
+                    Index = i,
+                    UnitLevel = 0,
+                });
+
+            db.Cells.AddRange(cells);
+            await db.SaveChangesAsync();
+        }
+
+        var accessToken = CreateToken(player);
         SetCookie(accessToken, HttpContext);
 
         return Ok(new { message = "Authentication successful" });
@@ -80,16 +116,14 @@ public class AuthController(
         return Ok();
     }
 
-    private string CreateToken(string address)
+    private string CreateToken(Player player)
     {
-        var normalizedAddress = address.ToLowerInvariant();
-
         var descriptor = new SecurityTokenDescriptor
         {
             Claims = new Dictionary<string, object>
             {
-                { JwtRegisteredClaimNames.Sub, normalizedAddress },
-                { "address", normalizedAddress },
+                { JwtRegisteredClaimNames.Sub, player.Id.ToString() },
+                { "address", player.WalletAddress.Value },
             },
             IssuedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddDays(30),
