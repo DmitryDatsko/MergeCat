@@ -6,7 +6,6 @@ using MergeCat.Configuration;
 using MergeCat.Context;
 using MergeCat.Models;
 using MergeCat.Models.DTO;
-using MergeCat.Services.Token;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -92,8 +91,10 @@ public class AuthController(
     public IActionResult Nonce()
     {
         var nonce = GenerateSecureNonce();
-        logger.LogWarning("Generated nonce: [{Nonce}]", nonce);
-        _cache.Set($"nonce: {nonce}", true, TimeSpan.FromMinutes(5));
+        var key = $"nonce: {nonce}";
+        _cache.Set(key, true, TimeSpan.FromMinutes(5));
+        var check = _cache.TryGetValue(key, out _);
+        logger.LogWarning("Set nonce with key [{Key}], immediate check: {Check}", key, check);
         return Ok(new { nonce });
     }
 
