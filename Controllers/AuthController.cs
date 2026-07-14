@@ -21,9 +21,9 @@ namespace MergeCat.Controllers;
 [Route("auth")]
 public class AuthController(
     IOptions<EnvVariables> env,
-    IUserIdentity userIdentity,
     IMemoryCache cache,
-    ApiDbContext db
+    ApiDbContext db,
+    ILogger<AuthController> logger
 ) : AuthorizedControllerBase
 {
     private readonly EnvVariables _env = env.Value;
@@ -32,15 +32,17 @@ public class AuthController(
     [HttpPost("verify")]
     public async Task<IActionResult> Authenticate([FromBody] AuthenticationRequest request)
     {
+        logger.LogWarning($"Message: {request.Message}, Signature: {request.Signature}");
         var nonce = ExtractNonceFromMessage(request.Message);
+        logger.LogWarning("Extracted nonce: [{Nonce}]", nonce);
 
         if (nonce is null)
             return Unauthorized(new { message = "Nonce not found in message" });
 
-        if (!_cache.TryGetValue($"nonce: {nonce}", out _))
+        if (!_cache.TryGetValue($"nonce:{nonce}", out _))
             return Unauthorized(new { message = "Invalid or expired nonce" });
 
-        _cache.Remove($"nonce: {nonce}");
+        _cache.Remove($"nonce:{nonce}");
 
         var signer = new EthereumMessageSigner();
         var recoveredAddress = signer.EncodeUTF8AndEcRecover(request.Message, request.Signature);
@@ -90,7 +92,8 @@ public class AuthController(
     public IActionResult Nonce()
     {
         var nonce = GenerateSecureNonce();
-        _cache.Set(nonce, true, TimeSpan.FromMinutes(5));
+        logger.LogWarning("Extracted nonce: [{Nonce}]", nonce);
+        _cache.Set($"nonce:{nonce}", true, TimeSpan.FromMinutes(5));
 
         return Ok(new { nonce });
     }
