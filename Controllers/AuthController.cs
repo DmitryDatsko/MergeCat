@@ -18,12 +18,8 @@ namespace MergeCat.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(
-    IOptions<EnvVariables> env,
-    IMemoryCache cache,
-    ApiDbContext db,
-    ILogger<AuthController> logger
-) : AuthorizedControllerBase
+public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiDbContext db)
+    : AuthorizedControllerBase
 {
     private readonly EnvVariables _env = env.Value;
     private readonly IMemoryCache _cache = cache;
@@ -31,23 +27,20 @@ public class AuthController(
     [HttpPost("verify")]
     public async Task<IActionResult> Authenticate([FromBody] AuthenticationRequest request)
     {
-        logger.LogWarning($"Message: {request.Message}, Signature: {request.Signature}");
         var nonce = ExtractNonceFromMessage(request.Message);
-        logger.LogWarning("Extracted nonce: [{Nonce}]", nonce);
-
-        if (nonce is null)
+        if (string.IsNullOrEmpty(nonce))
             return Unauthorized(new { message = "Nonce not found in message" });
 
-        if (!_cache.TryGetValue($"nonce:{nonce}", out _))
-            return Unauthorized(new { message = "Invalid or expired nonce" });
+        if (!_cache.TryGetValue(nonce, out _))
+            return Unauthorized(new { message = "Nonce is expired or doesn't exist" });
 
-        _cache.Remove($"nonce:{nonce}");
+        _cache.Remove(nonce);
 
         var signer = new EthereumMessageSigner();
         var recoveredAddress = signer.EncodeUTF8AndEcRecover(request.Message, request.Signature);
 
         if (string.IsNullOrEmpty(recoveredAddress))
-            return Unauthorized(new { message = "Invalid signature" });
+            return Unauthorized(new { message = "Invalid or expired nonce" });
 
         var normalizedAddress = EthereumAddress.Parse(recoveredAddress);
         var player = await db.Players.FirstOrDefaultAsync(p =>
@@ -88,14 +81,21 @@ public class AuthController(
     }
 
     [HttpGet("nonce")]
-    public IActionResult Nonce()
+    public async Task<IActionResult> Nonce()
     {
         var nonce = GenerateSecureNonce();
-        var key = $"nonce: {nonce}";
-        _cache.Set(key, true, TimeSpan.FromMinutes(5));
-        var check = _cache.TryGetValue(key, out _);
-        logger.LogWarning("Set nonce with key [{Key}], immediate check: {Check}", key, check);
-        return Ok(new { nonce });
+
+        _cache.Set(
+            nonce,
+            true,
+            new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+                Priority = CacheItemPriority.High,
+            }
+        );
+
+        return Ok(new { message = nonce });
     }
 
     [Authorize]
