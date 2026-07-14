@@ -70,12 +70,12 @@ builder.Services.AddCors(options =>
             policyBuilder
                 .WithOrigins(
                     builder.Environment.IsProduction()
-                        ? [] // temporary empty
-                        :
+                        ?
                         [
-                            "http://localhost:3000",
-                            "https://miniature-winner-jvg9gxv5776fg6j-3000.app.github.dev",
+                            "http://localhost:3000", // temporary same as dev
+                            "https://lilac-placate-handgun.ngrok-free.dev",
                         ]
+                        : ["http://localhost:3000", "https://lilac-placate-handgun.ngrok-free.dev"]
                 )
                 .AllowAnyHeader()
                 .AllowAnyMethod()

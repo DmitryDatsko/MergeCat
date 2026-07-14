@@ -90,7 +90,7 @@ public class AuthController(
     public IActionResult Nonce()
     {
         var nonce = GenerateSecureNonce();
-        _cache.Set($"nonce: {nonce}", true, TimeSpan.FromMinutes(5));
+        _cache.Set(nonce, true, TimeSpan.FromMinutes(5));
 
         return Ok(new { nonce });
     }

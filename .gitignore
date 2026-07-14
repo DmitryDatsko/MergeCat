@@ -8,6 +8,8 @@
 
 appsettings.json
 appsettings.Development.json
+docker-compose.yml
+Caddyfile
 
 # User-specific files
 *.rsuser
