@@ -92,9 +92,8 @@ public class AuthController(
     public IActionResult Nonce()
     {
         var nonce = GenerateSecureNonce();
-        logger.LogWarning("Extracted nonce: [{Nonce}]", nonce);
-        _cache.Set($"nonce:{nonce}", true, TimeSpan.FromMinutes(5));
-
+        logger.LogWarning("Generated nonce: [{Nonce}]", nonce);
+        _cache.Set($"nonce: {nonce}", true, TimeSpan.FromMinutes(5));
         return Ok(new { nonce });
     }
 
