@@ -21,7 +21,7 @@ public class BoardController(
 {
     private readonly EnvVariables _env = env.Value;
 
-    [HttpGet("board")]
+    [HttpGet("get-board")]
     public async Task<IActionResult> Board()
     {
         return Ok(await BuildBoardResponse(CurrentPlayerId));
