@@ -1,3 +1,3 @@
 namespace MergeCat.Models.DTO;
 
-public record MergeRequest(int CellAIndex, int CellBIndex);
+public record MergeRequest(int FromIndex, int ToIndex);

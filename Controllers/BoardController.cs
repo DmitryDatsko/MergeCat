@@ -30,24 +30,27 @@ public class BoardController(
     [HttpPost("merge")]
     public async Task<IActionResult> Merge([FromBody] MergeRequest request)
     {
-        if (request.CellAIndex is < 0 or > 11 || request.CellBIndex is < 0 or > 11)
+        if (request.FromIndex is < 0 or > 11 || request.ToIndex is < 0 or > 11)
             return BadRequest(new { message = "Cell index must be between 0 and 11" });
 
-        if (request.CellAIndex == request.CellBIndex)
+        if (request.FromIndex == request.ToIndex)
             return BadRequest(new { message = "Cannot merge a cell with itselft" });
 
-        var cellA = await db.Cells.FirstOrDefaultAsync(c =>
-            c.PlayerId == CurrentPlayerId && c.Index == request.CellAIndex
+        var fromIndex = await db.Cells.FirstOrDefaultAsync(c =>
+            c.PlayerId == CurrentPlayerId && c.Index == request.FromIndex
         );
 
-        var cellB = await db.Cells.FirstOrDefaultAsync(c =>
-            c.PlayerId == CurrentPlayerId && c.Index == request.CellBIndex
+        var toIndex = await db.Cells.FirstOrDefaultAsync(c =>
+            c.PlayerId == CurrentPlayerId && c.Index == request.ToIndex
         );
 
-        if (cellA is null || cellB is null)
+        if (fromIndex is null || toIndex is null)
             return NotFound(new { message = "One or both cells are empty" });
 
-        if (cellA.UnitLevel != cellB.UnitLevel)
+        if (fromIndex.UnitLevel == 0 || toIndex.UnitLevel == 0)
+            return Conflict(new { message = "One or both cells are empty" });
+
+        if (fromIndex.UnitLevel != toIndex.UnitLevel)
             return Conflict(new { message = "Units must be the same level to merge" });
 
         var player = await db.Players.FindAsync(CurrentPlayerId);
@@ -55,21 +58,21 @@ public class BoardController(
             return NotFound(new { message = "User not found" });
         await balanceService.CollectAsync(player);
 
-        var oldIncome = CalculateIncome(cellA.UnitLevel) + CalculateIncome(cellB.UnitLevel);
+        var oldIncome = CalculateIncome(fromIndex.UnitLevel) + CalculateIncome(toIndex.UnitLevel);
 
         var mergeLog = new MergeLog
         {
             PlayerId = player.Id,
-            CellA = cellA,
-            CellB = cellB,
-            ResultingLevel = cellA.UnitLevel + 1,
+            CellA = fromIndex,
+            CellB = toIndex,
+            ResultingLevel = toIndex.UnitLevel + 1,
             Timestamp = DateTime.UtcNow,
         };
         await db.MergeLogs.AddAsync(mergeLog);
 
-        cellA.UnitLevel++;
-        cellB.UnitLevel = 0;
-        var newIncome = CalculateIncome(cellA.UnitLevel);
+        fromIndex.UnitLevel = 0;
+        toIndex.UnitLevel++;
+        var newIncome = CalculateIncome(toIndex.UnitLevel);
         player.IncomeRate = player.IncomeRate - oldIncome + newIncome;
         await db.SaveChangesAsync();
 
