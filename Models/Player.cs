@@ -10,6 +10,7 @@ public class Player
     public double TotalEarned { get; set; }
     public double IncomeRate { get; set; }
     public int DailyPurchases { get; set; }
+    public League League { get; set; }
     public DateTime LastCollectedAt { get; set; }
     public DateOnly LastPurchaseDate { get; set; }
 

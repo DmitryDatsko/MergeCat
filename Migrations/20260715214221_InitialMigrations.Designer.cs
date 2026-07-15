@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MergeCat.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    [Migration("20260715145541_InitialMigrations")]
+    [Migration("20260715214221_InitialMigrations")]
     partial class InitialMigrations
     {
         /// <inheritdoc />
@@ -119,6 +119,11 @@ namespace MergeCat.Migrations
                     b.Property<DateOnly>("LastPurchaseDate")
                         .HasColumnType("date")
                         .HasColumnName("last_purchase_date");
+
+                    b.Property<string>("League")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("league");
 
                     b.Property<double>("TotalEarned")
                         .HasColumnType("double precision")

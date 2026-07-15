@@ -26,6 +26,10 @@ public class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbContext(op
                 .IsRowVersion()
                 .HasColumnName("xmin")
                 .HasColumnType("xid");
+
+            entity
+                .Property(p => p.League)
+                .HasConversion(v => v.ToString(), v => Enum.Parse<League>(v));
         });
 
         modelBuilder.Entity<Cell>(entity =>

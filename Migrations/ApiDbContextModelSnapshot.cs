@@ -117,6 +117,11 @@ namespace MergeCat.Migrations
                         .HasColumnType("date")
                         .HasColumnName("last_purchase_date");
 
+                    b.Property<string>("League")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("league");
+
                     b.Property<double>("TotalEarned")
                         .HasColumnType("double precision")
                         .HasColumnName("total_earned");

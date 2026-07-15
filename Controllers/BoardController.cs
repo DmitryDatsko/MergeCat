@@ -150,6 +150,8 @@ public class BoardController(
         {
             cells,
             balance = player.Balance + player.IncomeRate * elapsed,
+            player.TotalEarned,
+            league = player.League.ToString(),
             incomeRate = player.IncomeRate,
             lastCollectedAt = player.LastCollectedAt,
             serverTime = now,

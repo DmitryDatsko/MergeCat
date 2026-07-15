@@ -21,6 +21,7 @@ namespace MergeCat.Migrations
                     total_earned = table.Column<double>(type: "double precision", nullable: false),
                     income_rate = table.Column<double>(type: "double precision", nullable: false),
                     daily_purchases = table.Column<int>(type: "integer", nullable: false),
+                    league = table.Column<string>(type: "text", nullable: false),
                     last_collected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     last_purchase_date = table.Column<DateOnly>(type: "date", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
