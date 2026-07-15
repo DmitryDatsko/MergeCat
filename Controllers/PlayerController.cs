@@ -28,7 +28,7 @@ public class PlayerController(ApiDbContext db, IBalanceService balanceService)
                 player.IncomeRate,
                 player.TotalEarned,
                 player.LastCollectedAt,
-                league,
+                league = league.ToString(),
             }
         );
     }
