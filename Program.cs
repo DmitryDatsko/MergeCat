@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using MergeCat.Configuration;
 using MergeCat.Context;
 using MergeCat.Services;
@@ -59,7 +60,12 @@ builder
 
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddControllers();
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 
 builder.Services.AddCors(options =>
 {

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MergeCat.Models;
 
 public class Player
@@ -7,7 +9,12 @@ public class Player
     public double Balance { get; set; }
     public double TotalEarned { get; set; }
     public double IncomeRate { get; set; }
+    public int DailyPurchases { get; set; }
     public DateTime LastCollectedAt { get; set; }
+    public DateOnly LastPurchaseDate { get; set; }
+
+    [Timestamp]
+    public uint Version { get; set; }
 
     public ICollection<Cell> Cells { get; } = [];
 }

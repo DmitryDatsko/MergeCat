@@ -1,5 +1,6 @@
 using MergeCat.Configuration;
 using MergeCat.Context;
+using MergeCat.Models;
 using MergeCat.Models.DTO;
 using MergeCat.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -10,8 +11,8 @@ using Microsoft.Extensions.Options;
 namespace MergeCat.Controllers;
 
 [ApiController]
-[Route("board")]
 [Authorize]
+[Route("board")]
 public class BoardController(
     ApiDbContext db,
     IOptions<EnvVariables> env,
@@ -56,6 +57,16 @@ public class BoardController(
 
         var oldIncome = CalculateIncome(cellA.UnitLevel) + CalculateIncome(cellB.UnitLevel);
 
+        var mergeLog = new MergeLog
+        {
+            PlayerId = player.Id,
+            CellA = cellA,
+            CellB = cellB,
+            ResultingLevel = cellA.UnitLevel + 1,
+            Timestamp = DateTime.UtcNow,
+        };
+        await db.MergeLogs.AddAsync(mergeLog);
+
         cellA.UnitLevel++;
         cellB.UnitLevel = 0;
         var newIncome = CalculateIncome(cellA.UnitLevel);
@@ -68,30 +79,50 @@ public class BoardController(
     [HttpPost("buy-unit")]
     public async Task<IActionResult> BuyUnit()
     {
-        var emptyCell = await db
-            .Cells.Where(c => c.PlayerId == CurrentPlayerId && c.UnitLevel == 0)
-            .OrderBy(c => c.Index)
-            .FirstOrDefaultAsync();
+        const int maxRetries = 3;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            try
+            {
+                var emptyCell = await db
+                    .Cells.Where(c => c.PlayerId == CurrentPlayerId && c.UnitLevel == 0)
+                    .OrderBy(c => c.Index)
+                    .FirstOrDefaultAsync();
 
-        if (emptyCell is null)
-            return Conflict(new { message = "No free cells available" });
+                if (emptyCell is null)
+                    return Conflict(new { message = "No free cells available" });
 
-        var player = await db.Players.FindAsync(CurrentPlayerId);
-        if (player is null)
-            return NotFound(new { message = "User not found" });
+                var player = await db.Players.FindAsync(CurrentPlayerId);
+                if (player is null)
+                    return NotFound(new { message = "User not found" });
 
-        await balanceService.CollectAsync(player);
+                await balanceService.CollectAsync(player);
 
-        if (player.Balance < _env.UnitBaseCost)
-            return Conflict(new { message = "Insufficient balance" });
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                bool isNewDay = player.LastPurchaseDate < today;
+                int purchases = isNewDay ? 0 : player.DailyPurchases;
 
-        emptyCell.UnitLevel = 1;
-        player.Balance -= _env.UnitBaseCost;
-        player.IncomeRate += CalculateIncome(1);
+                double unitCost = CalculateUnitCost(++purchases);
+                if (player.Balance < unitCost)
+                    return Conflict(new { message = "Insufficient balance" });
 
-        await db.SaveChangesAsync();
+                player.DailyPurchases = purchases;
+                player.LastPurchaseDate = today;
+                emptyCell.UnitLevel = 1;
+                player.Balance -= unitCost;
+                player.IncomeRate += CalculateIncome(1);
 
-        return Ok(await BuildBoardResponse(CurrentPlayerId));
+                await db.SaveChangesAsync();
+
+                return Ok(await BuildBoardResponse(CurrentPlayerId));
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < maxRetries - 1)
+            {
+                db.ChangeTracker.Clear();
+            }
+        }
+
+        return Conflict(new { message = "Please retry" });
     }
 
     private async Task<object> BuildBoardResponse(Guid playerId)
@@ -117,4 +148,7 @@ public class BoardController(
 
     private double CalculateIncome(int unitLevel) =>
         unitLevel == 0 ? 0 : _env.IncomeBaseRate * Math.Pow(_env.IncomeGrowthRate, unitLevel - 1);
+
+    private double CalculateUnitCost(int boughtAmount) =>
+        _env.UnitBaseCost * Math.Pow(_env.CostGrowthRate, boughtAmount);
 }

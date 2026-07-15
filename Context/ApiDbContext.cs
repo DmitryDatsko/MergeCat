@@ -20,6 +20,12 @@ public class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbContext(op
                 .IsRequired();
 
             entity.HasIndex(p => p.WalletAddress).IsUnique();
+
+            entity
+                .Property(p => p.Version)
+                .IsRowVersion()
+                .HasColumnName("xmin")
+                .HasColumnType("xid");
         });
 
         modelBuilder.Entity<Cell>(entity =>

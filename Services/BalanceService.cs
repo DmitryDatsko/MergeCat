@@ -4,13 +4,15 @@ namespace MergeCat.Services;
 
 public class BalanceService : IBalanceService
 {
+    const int MaxSecondsOffline = 14400;
+
     public Task CollectAsync(Player player)
     {
         var now = DateTime.UtcNow;
-        var elapsed = (now - player.LastCollectedAt).TotalSeconds;
+        var elapsed = Math.Min((now - player.LastCollectedAt).TotalSeconds, MaxSecondsOffline);
         var earned = player.IncomeRate * elapsed;
 
-        player.Balance += elapsed;
+        player.Balance += earned;
         player.TotalEarned += earned;
         player.LastCollectedAt = now;
 
