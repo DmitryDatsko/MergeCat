@@ -131,6 +131,13 @@ public class BoardController(
         var cells = await db
             .Cells.Where(c => c.PlayerId == playerId)
             .OrderBy(c => c.Index)
+            .Select(c => new
+            {
+                c.Id,
+                c.Index,
+                c.UnitLevel,
+                c.PlayerId,
+            })
             .ToListAsync();
 
         var now = DateTime.UtcNow;
