@@ -79,18 +79,57 @@ public class BoardController(
         return Ok(await BuildBoardResponse(CurrentPlayerId));
     }
 
+    [HttpGet("get-prices")]
+    public async Task<IActionResult> Prices()
+    {
+        var maxLevel =
+            await db
+                .Cells.Where(c => c.PlayerId == CurrentPlayerId && c.UnitLevel > 0)
+                .MaxAsync(c => (int?)c.UnitLevel)
+            ?? 0;
+
+        var boughtAmount = await db
+            .Players.Where(p => p.Id == CurrentPlayerId)
+            .Select(p => p.DailyPurchases)
+            .FirstOrDefaultAsync();
+
+        if (maxLevel == 0)
+            return Ok(new[] { new { Level = 1, Price = CalculateUnitCost(1, boughtAmount) } });
+
+        var prices = Enumerable
+            .Range(1, maxLevel)
+            .Select(k => new { Level = k, Price = CalculateUnitCost(k, boughtAmount) })
+            .ToList();
+
+        return Ok(prices);
+    }
+
     [HttpPost("buy-unit")]
-    public async Task<IActionResult> BuyUnit()
+    public async Task<IActionResult> BuyUnit([FromBody] BuyUnitRequest request)
     {
         const int maxRetries = 3;
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
             try
             {
-                var emptyCell = await db
-                    .Cells.Where(c => c.PlayerId == CurrentPlayerId && c.UnitLevel == 0)
+                if (request.Level <= 0)
+                    return BadRequest("Level must be >= 1");
+
+                var cells = await db
+                    .Cells.Where(c => c.PlayerId == CurrentPlayerId)
                     .OrderBy(c => c.Index)
-                    .FirstOrDefaultAsync();
+                    .ToListAsync();
+
+                var allowedMax = cells
+                    .Where(c => c.UnitLevel > 0)
+                    .Select(c => c.UnitLevel)
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                if (request.Level > allowedMax)
+                    return Conflict("Level not unlocked yet");
+
+                var emptyCell = cells.FirstOrDefault(c => c.UnitLevel == 0);
 
                 if (emptyCell is null)
                     return Conflict(new { message = "No free cells available" });
@@ -105,7 +144,7 @@ public class BoardController(
                 bool isNewDay = player.LastPurchaseDate < today;
                 int purchases = isNewDay ? 0 : player.DailyPurchases;
 
-                double unitCost = CalculateUnitCost(++purchases);
+                double unitCost = CalculateUnitCost(request.Level, ++purchases);
                 if (player.Balance < unitCost)
                     return Conflict(new { message = "Insufficient balance" });
 
@@ -161,6 +200,8 @@ public class BoardController(
     private double CalculateIncome(int unitLevel) =>
         unitLevel == 0 ? 0 : _env.IncomeBaseRate * Math.Pow(_env.IncomeGrowthRate, unitLevel - 1);
 
-    private double CalculateUnitCost(int boughtAmount) =>
-        _env.UnitBaseCost * Math.Pow(_env.CostGrowthRate, boughtAmount);
+    private double CalculateUnitCost(int level, int boughtAmount) =>
+        _env.UnitBaseCost
+        * Math.Pow(_env.LevelGrowthRate, level - 1)
+        * Math.Pow(_env.DailyPurchaseGrowthRate, boughtAmount);
 }

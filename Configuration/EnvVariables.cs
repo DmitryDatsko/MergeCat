@@ -9,7 +9,8 @@ public class EnvVariables
     public int BoardSize { get; set; }
     public double StartingBalance { get; set; }
     public double UnitBaseCost { get; set; }
-    public double CostGrowthRate { get; set; }
+    public double LevelGrowthRate { get; set; }
+    public double DailyPurchaseGrowthRate { get; set; }
     public double IncomeBaseRate { get; set; }
     public double IncomeGrowthRate { get; set; }
 }
