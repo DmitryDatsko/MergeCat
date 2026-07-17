@@ -94,11 +94,26 @@ public class BoardController(
             .FirstOrDefaultAsync();
 
         if (maxLevel == 0)
-            return Ok(new[] { new { Level = 1, Price = CalculateUnitCost(1, boughtAmount) } });
+            return Ok(
+                new[]
+                {
+                    new
+                    {
+                        Level = 1,
+                        Price = CalculateUnitCost(1, boughtAmount),
+                        Speed = CalculateIncome(1),
+                    },
+                }
+            );
 
         var prices = Enumerable
             .Range(1, maxLevel)
-            .Select(k => new { Level = k, Price = CalculateUnitCost(k, boughtAmount) })
+            .Select(k => new
+            {
+                Level = k,
+                Price = CalculateUnitCost(k, boughtAmount),
+                Speed = CalculateIncome(k),
+            })
             .ToList();
 
         return Ok(prices);

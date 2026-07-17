@@ -20,6 +20,7 @@ public class PlayerController(ApiDbContext db, IBalanceService balanceService)
 
         await balanceService.CollectAsync(player);
         var league = LeagueExtensions.FromTotalEarned(player.TotalEarned);
+        await db.SaveChangesAsync();
 
         return Ok(
             new
