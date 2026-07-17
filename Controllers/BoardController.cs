@@ -82,7 +82,7 @@ public class BoardController(
         player.IncomeRate = player.IncomeRate - oldIncome + newIncome;
         await db.SaveChangesAsync();
 
-        return Ok(await BuildBoardResponse(CurrentPlayerId));
+        return Ok(await BuildBoardResponse(player));
     }
 
     [HttpGet("get-prices")]
