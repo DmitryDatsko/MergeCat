@@ -141,11 +141,14 @@ public class BoardController(
                     .OrderBy(c => c.Index)
                     .ToListAsync();
 
-                var allowedMax = cells
-                    .Where(c => c.UnitLevel > 0)
-                    .Select(c => c.UnitLevel)
-                    .DefaultIfEmpty(0)
-                    .Max();
+                var allowedMax = Math.Max(
+                    cells
+                        .Where(c => c.UnitLevel > 0)
+                        .Select(c => c.UnitLevel)
+                        .DefaultIfEmpty(0)
+                        .Max(),
+                    1
+                );
 
                 if (request.Level > allowedMax)
                     return Conflict("Level not unlocked yet");
