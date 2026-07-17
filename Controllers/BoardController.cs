@@ -24,7 +24,13 @@ public class BoardController(
     [HttpGet("get-board")]
     public async Task<IActionResult> Board()
     {
-        return Ok(await BuildBoardResponse(CurrentPlayerId));
+        var player = await db.Players.FindAsync(CurrentPlayerId);
+        if (player is null)
+            return NotFound("Player not found");
+
+        await balanceService.CollectAsync(player);
+
+        return Ok(await BuildBoardResponse(player));
     }
 
     [HttpPost("merge")]
@@ -34,7 +40,7 @@ public class BoardController(
             return BadRequest(new { message = "Cell index must be between 0 and 11" });
 
         if (request.FromIndex == request.ToIndex)
-            return BadRequest(new { message = "Cannot merge a cell with itselft" });
+            return BadRequest(new { message = "Cannot merge a cell with itself" });
 
         var fromIndex = await db.Cells.FirstOrDefaultAsync(c =>
             c.PlayerId == CurrentPlayerId && c.Index == request.FromIndex
@@ -171,7 +177,7 @@ public class BoardController(
 
                 await db.SaveChangesAsync();
 
-                return Ok(await BuildBoardResponse(CurrentPlayerId));
+                return Ok(await BuildBoardResponse(player));
             }
             catch (DbUpdateConcurrencyException) when (attempt < maxRetries - 1)
             {
@@ -182,11 +188,48 @@ public class BoardController(
         return Conflict(new { message = "Please retry" });
     }
 
-    private async Task<object> BuildBoardResponse(Guid playerId)
+    [HttpPost("move")]
+    public async Task<IActionResult> Move([FromBody] MergeRequest request)
     {
-        var player = await db.Players.FindAsync(playerId);
+        if (request.FromIndex is < 0 or > 11 || request.ToIndex is < 0 or > 11)
+            return BadRequest(new { message = "Cell index must be between 0 and 11" });
+
+        if (request.FromIndex == request.ToIndex)
+            return BadRequest(new { message = "Cannot move a cell to itself" });
+
+        var player = await db.Players.FindAsync(CurrentPlayerId);
+        if (player is null)
+            return NotFound("Player not found");
+
         var cells = await db
-            .Cells.Where(c => c.PlayerId == playerId)
+            .Cells.Where(c =>
+                c.PlayerId == CurrentPlayerId
+                && (c.Index == request.FromIndex || c.Index == request.ToIndex)
+            )
+            .ToListAsync();
+
+        var fromCell = cells.FirstOrDefault(c => c.Index == request.FromIndex);
+        var toCell = cells.FirstOrDefault(c => c.Index == request.ToIndex);
+
+        if (fromCell is null || toCell is null)
+            return NotFound(new { message = "One or both cells not found" });
+
+        if (fromCell.UnitLevel <= 0 || toCell.UnitLevel != 0)
+            return Conflict(
+                new { message = "Move only possible when to index doesn't contain unit" }
+            );
+
+        (fromCell.UnitLevel, toCell.UnitLevel) = (toCell.UnitLevel, fromCell.UnitLevel);
+        await balanceService.CollectAsync(player);
+        await db.SaveChangesAsync();
+
+        return Ok(await BuildBoardResponse(player));
+    }
+
+    private async Task<object> BuildBoardResponse(Player player)
+    {
+        var cells = await db
+            .Cells.Where(c => c.PlayerId == player.Id)
             .OrderBy(c => c.Index)
             .Select(c => new
             {
@@ -198,7 +241,7 @@ public class BoardController(
             .ToListAsync();
 
         var now = DateTime.UtcNow;
-        var elapsed = (now - player!.LastCollectedAt).TotalSeconds;
+        var elapsed = (now - player.LastCollectedAt).TotalSeconds;
 
         return new
         {
