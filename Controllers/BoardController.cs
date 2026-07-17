@@ -165,9 +165,9 @@ public class BoardController(
 
                 player.DailyPurchases = purchases;
                 player.LastPurchaseDate = today;
-                emptyCell.UnitLevel = 1;
+                emptyCell.UnitLevel = request.Level;
                 player.Balance -= unitCost;
-                player.IncomeRate += CalculateIncome(1);
+                player.IncomeRate += CalculateIncome(request.Level);
 
                 await db.SaveChangesAsync();
 
