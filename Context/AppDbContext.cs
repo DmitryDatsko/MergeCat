@@ -66,7 +66,7 @@ public class AppDbContext(
         modelBuilder.Entity<IndexerState>(entity =>
         {
             entity.Property(s => s.Id).ValueGeneratedNever();
-            entity.ToTable(t => t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1"));
+            entity.ToTable(t => t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"id\" = 1"));
 
             entity.HasData(
                 new IndexerState

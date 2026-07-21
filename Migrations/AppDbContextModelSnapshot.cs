@@ -66,7 +66,7 @@ namespace MergeCat.Migrations
 
                     b.ToTable("indexer_states", null, t =>
                         {
-                            t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1");
+                            t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"id\" = 1");
                         });
 
                     b.HasData(

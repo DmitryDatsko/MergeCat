@@ -22,7 +22,7 @@ namespace MergeCat.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_indexer_states", x => x.id);
-                    table.CheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1");
+                    table.CheckConstraint("CK_IndexerState_SingletonId", "\"id\" = 1");
                 });
 
             migrationBuilder.CreateTable(

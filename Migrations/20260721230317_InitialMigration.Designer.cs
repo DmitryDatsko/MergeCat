@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MergeCat.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260721225518_InitialMigration")]
+    [Migration("20260721230317_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -69,7 +69,7 @@ namespace MergeCat.Migrations
 
                     b.ToTable("indexer_states", null, t =>
                         {
-                            t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1");
+                            t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"id\" = 1");
                         });
 
                     b.HasData(
