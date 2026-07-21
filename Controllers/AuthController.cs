@@ -2,10 +2,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using MergeCat.Configuration;
 using MergeCat.Context;
 using MergeCat.Models;
 using MergeCat.Models.DTO;
+using MergeCat.Options;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +18,15 @@ namespace MergeCat.Controllers;
 
 [ApiController]
 [Route("auth")]
-public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiDbContext db)
-    : AuthorizedControllerBase
+public class AuthController(
+    IOptions<JwtOptions> jwtOptions,
+    IOptions<GameOptions> gameOptions,
+    IMemoryCache cache,
+    AppDbContext db
+) : AuthorizedControllerBase
 {
-    private readonly EnvVariables _env = env.Value;
+    private readonly JwtOptions _jwtOptions = jwtOptions.Value;
+    private readonly GameOptions _gameOptions = gameOptions.Value;
     private readonly IMemoryCache _cache = cache;
 
     [HttpPost("verify")]
@@ -52,7 +57,7 @@ public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiD
             player = new Player
             {
                 WalletAddress = normalizedAddress,
-                Balance = _env.StartingBalance,
+                Balance = _gameOptions.StartingBalance,
                 TotalEarned = 0,
                 IncomeRate = 0,
                 LastCollectedAt = DateTime.UtcNow,
@@ -62,7 +67,7 @@ public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiD
             await db.SaveChangesAsync();
 
             var cells = Enumerable
-                .Range(0, _env.BoardSize)
+                .Range(0, _gameOptions.BoardSize)
                 .Select(i => new Cell
                 {
                     PlayerId = player.Id,
@@ -126,12 +131,12 @@ public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiD
                 { JwtRegisteredClaimNames.Sub, player.Id.ToString() },
                 { "address", player.WalletAddress.Value },
             },
-            Audience = _env.Audience,
-            Issuer = _env.Issuer,
+            Audience = _jwtOptions.Audience,
+            Issuer = _jwtOptions.Issuer,
             IssuedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddDays(30),
             SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_env.JwtTokenSecret)),
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.TokenSecret)),
                 SecurityAlgorithms.HmacSha512Signature
             ),
         };
@@ -144,7 +149,7 @@ public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiD
     private void SetCookie(string accessToken, HttpContext httpContext)
     {
         httpContext.Response.Cookies.Append(
-            _env.CookieName,
+            _jwtOptions.CookieName,
             accessToken,
             new CookieOptions
             {
@@ -160,7 +165,7 @@ public class AuthController(IOptions<EnvVariables> env, IMemoryCache cache, ApiD
     private void RemoveCookie(HttpContext httpContext)
     {
         httpContext.Response.Cookies.Delete(
-            _env.CookieName,
+            _jwtOptions.CookieName,
             new CookieOptions
             {
                 Path = "/",

@@ -3,11 +3,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MergeCat.Context;
 
-public class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Player> Players { get; set; }
     public DbSet<Cell> Cells { get; set; }
     public DbSet<MergeLog> MergeLogs { get; set; }
+    public DbSet<IndexerState> IndexerStates { get; set; }
+    public DbSet<ProcessedPurchase> ProcessedPurchases { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +37,19 @@ public class ApiDbContext(DbContextOptions<ApiDbContext> options) : DbContext(op
         modelBuilder.Entity<Cell>(entity =>
         {
             entity.HasIndex(c => new { c.PlayerId, c.Index }).IsUnique();
+        });
+
+        modelBuilder
+            .Entity<ProcessedPurchase>()
+            .HasIndex(p => new { p.TxHash, p.LogIndex })
+            .IsUnique();
+
+        modelBuilder.Entity<IndexerState>(entity =>
+        {
+            entity.Property(s => s.Id).ValueGeneratedNever();
+            entity.ToTable(t => t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1"));
+
+            entity.HasData(new IndexerState { Id = 1, LastProcessedBlock = 72693190 });
         });
     }
 }

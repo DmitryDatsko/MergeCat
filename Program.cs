@@ -1,22 +1,26 @@
 using System.Text;
 using System.Text.Json;
-using MergeCat.Configuration;
 using MergeCat.Context;
+using MergeCat.Options;
 using MergeCat.Services;
 using MergeCat.Services.Token;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Nethereum.Web3;
 
 var builder = WebApplication.CreateBuilder(args);
 var myAllowSpecificOrigins = "_myAllowSpecificOrigins";
-var envVariables = builder.Configuration.GetSection(nameof(EnvVariables));
+var jwtOptions = builder.Configuration.GetSection(nameof(JwtOptions)).Get<JwtOptions>()!;
 
-builder.Services.Configure<EnvVariables>(envVariables);
+builder.Services.AddOptions<JwtOptions>().BindConfiguration(nameof(JwtOptions));
+builder.Services.AddOptions<GameOptions>().BindConfiguration(nameof(GameOptions));
+builder.Services.AddOptions<BlockchainOptions>().BindConfiguration(nameof(BlockchainOptions));
 
 builder.Services.AddOpenApi();
-builder.Services.AddDbContextFactory<ApiDbContext>(options =>
+builder.Services.AddDbContextFactory<AppDbContext>(options =>
 {
     options
         .UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -31,14 +35,14 @@ builder
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = envVariables[nameof(EnvVariables.Issuer)],
+            ValidIssuer = jwtOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = envVariables[nameof(EnvVariables.Audience)],
+            ValidAudience = jwtOptions.Audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(envVariables[nameof(EnvVariables.JwtTokenSecret)])
+                Encoding.UTF8.GetBytes(jwtOptions.TokenSecret)
             ),
         };
 
@@ -46,12 +50,7 @@ builder
         {
             OnMessageReceived = context =>
             {
-                if (
-                    context.Request.Cookies.TryGetValue(
-                        envVariables[nameof(EnvVariables.CookieName)],
-                        out var token
-                    )
-                )
+                if (context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var token))
                     context.Token = token;
 
                 return Task.CompletedTask;
@@ -91,6 +90,12 @@ builder.Services.AddCors(options =>
     );
 });
 
+builder.Services.AddHostedService<OnChainPurchaseIndexer>();
+builder.Services.AddSingleton(sp =>
+{
+    var options = sp.GetRequiredService<IOptions<BlockchainOptions>>().Value;
+    return new Web3(options.RpcUrl);
+});
 builder.Services.AddSingleton<IUserIdentity, UserIdentity>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddMemoryCache();

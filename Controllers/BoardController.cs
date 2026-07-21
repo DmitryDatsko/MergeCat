@@ -1,7 +1,7 @@
-using MergeCat.Configuration;
 using MergeCat.Context;
 using MergeCat.Models;
 using MergeCat.Models.DTO;
+using MergeCat.Options;
 using MergeCat.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,12 +14,12 @@ namespace MergeCat.Controllers;
 [Authorize]
 [Route("board")]
 public class BoardController(
-    ApiDbContext db,
-    IOptions<EnvVariables> env,
+    AppDbContext db,
+    IOptions<GameOptions> gameOptions,
     IBalanceService balanceService
 ) : AuthorizedControllerBase
 {
-    private readonly EnvVariables _env = env.Value;
+    private readonly GameOptions _gameOptions = gameOptions.Value;
 
     [HttpGet("get-board")]
     public async Task<IActionResult> Board()
@@ -28,7 +28,8 @@ public class BoardController(
         if (player is null)
             return NotFound("Player not found");
 
-        await balanceService.CollectAsync(player);
+        balanceService.CollectEarning(player);
+        await db.SaveChangesAsync();
 
         return Ok(await BuildBoardResponse(player));
     }
@@ -62,7 +63,7 @@ public class BoardController(
         var player = await db.Players.FindAsync(CurrentPlayerId);
         if (player is null)
             return NotFound(new { message = "User not found" });
-        await balanceService.CollectAsync(player);
+        balanceService.CollectEarning(player);
 
         var oldIncome = CalculateIncome(fromIndex.UnitLevel) + CalculateIncome(toIndex.UnitLevel);
 
@@ -162,7 +163,7 @@ public class BoardController(
                 if (player is null)
                     return NotFound(new { message = "User not found" });
 
-                await balanceService.CollectAsync(player);
+                balanceService.CollectEarning(player);
 
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
                 bool isNewDay = player.LastPurchaseDate < today;
@@ -223,7 +224,7 @@ public class BoardController(
             );
 
         (fromCell.UnitLevel, toCell.UnitLevel) = (toCell.UnitLevel, fromCell.UnitLevel);
-        await balanceService.CollectAsync(player);
+        balanceService.CollectEarning(player);
         await db.SaveChangesAsync();
 
         return Ok(await BuildBoardResponse(player));
@@ -259,10 +260,12 @@ public class BoardController(
     }
 
     private double CalculateIncome(int unitLevel) =>
-        unitLevel == 0 ? 0 : _env.IncomeBaseRate * Math.Pow(_env.IncomeGrowthRate, unitLevel - 1);
+        unitLevel == 0
+            ? 0
+            : _gameOptions.IncomeBaseRate * Math.Pow(_gameOptions.IncomeGrowthRate, unitLevel - 1);
 
     private double CalculateUnitCost(int level, int boughtAmount) =>
-        _env.UnitBaseCost
-        * Math.Pow(_env.LevelGrowthRate, level - 1)
-        * Math.Pow(_env.DailyPurchaseGrowthRate, boughtAmount);
+        _gameOptions.UnitBaseCost
+        * Math.Pow(_gameOptions.LevelGrowthRate, level - 1)
+        * Math.Pow(_gameOptions.DailyPurchaseGrowthRate, boughtAmount);
 }

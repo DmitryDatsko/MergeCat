@@ -4,18 +4,58 @@ namespace MergeCat.Services;
 
 public class BalanceService : IBalanceService
 {
-    const int MaxSecondsOffline = 14400;
+    private static readonly TimeSpan OfflineCap = TimeSpan.FromHours(4);
 
-    public Task CollectAsync(Player player)
+    public double CalculateEarningsForRange(DateTime rangeStart, DateTime rangeEnd, Player player)
+    {
+        if (rangeEnd <= rangeStart)
+            return 0;
+
+        var totalDuration = rangeEnd - rangeStart;
+
+        if (player.BoostExpiresAt is null || player.BoostExpiresAt <= rangeStart)
+            return totalDuration.TotalSeconds * player.IncomeRate;
+
+        if (player.BoostExpiresAt >= rangeEnd)
+            return totalDuration.TotalSeconds * player.IncomeRate * 2;
+
+        var boostedDuration = player.BoostExpiresAt.Value - rangeStart;
+        var normalDuration = rangeEnd - player.BoostExpiresAt.Value;
+
+        return boostedDuration.TotalSeconds * player.IncomeRate * 2
+            + normalDuration.TotalSeconds * player.IncomeRate;
+    }
+
+    public void CollectEarning(Player player)
+    {
+        var (claimedGold, _) = PreviewEarnings(player);
+
+        player.Balance += claimedGold;
+        player.TotalEarned += claimedGold;
+        player.LastCollectedAt = DateTime.UtcNow;
+    }
+
+    public void CollectWithBonus(Player player)
+    {
+        var (claimedGold, bonusGold) = PreviewEarnings(player);
+        var total = claimedGold + bonusGold;
+
+        player.Balance += total;
+        player.TotalEarned += total;
+        player.LastCollectedAt = DateTime.UtcNow;
+    }
+
+    public (double ClaimableGold, double BonusGold) PreviewEarnings(Player player)
     {
         var now = DateTime.UtcNow;
-        var elapsed = Math.Min((now - player.LastCollectedAt).TotalSeconds, MaxSecondsOffline);
-        var earned = player.IncomeRate * elapsed;
+        var cappedPoint = player.LastCollectedAt + OfflineCap;
+        if (cappedPoint > now)
+            cappedPoint = now;
 
-        player.Balance += earned;
-        player.TotalEarned += earned;
-        player.LastCollectedAt = now;
+        var claimedGold = CalculateEarningsForRange(player.LastCollectedAt, cappedPoint, player);
 
-        return Task.CompletedTask;
+        var bonusGold = now > cappedPoint ? CalculateEarningsForRange(cappedPoint, now, player) : 0;
+
+        return (claimedGold, bonusGold);
     }
 }

@@ -4,5 +4,8 @@ namespace MergeCat.Services;
 
 public interface IBalanceService
 {
-    Task CollectAsync(Player player);
+    void CollectEarning(Player player);
+    void CollectWithBonus(Player player);
+    double CalculateEarningsForRange(DateTime rangeStart, DateTime rangeEnd, Player player);
+    (double ClaimableGold, double BonusGold) PreviewEarnings(Player player);
 }
