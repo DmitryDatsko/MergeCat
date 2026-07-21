@@ -1,10 +1,17 @@
 using MergeCat.Models;
+using MergeCat.Options;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.Options;
 
 namespace MergeCat.Context;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(
+    DbContextOptions<AppDbContext> options,
+    IOptions<BlockchainOptions> blockchainOptions
+) : DbContext(options)
 {
+    private readonly BlockchainOptions _blockchainOptions = blockchainOptions.Value;
     public DbSet<Player> Players { get; set; }
     public DbSet<Cell> Cells { get; set; }
     public DbSet<MergeLog> MergeLogs { get; set; }
@@ -13,14 +20,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var ethereumAddressConverter = new ValueConverter<EthereumAddress, string>(
+            address => address.Value,
+            value => EthereumAddress.Parse(value)
+        );
+
         modelBuilder.Entity<Player>(entity =>
         {
-            entity
+            modelBuilder
+                .Entity<Player>()
                 .Property(p => p.WalletAddress)
-                .HasConversion(v => v.Value, v => EthereumAddress.Parse(v))
-                .HasColumnType("char(42)")
-                .IsRequired();
-
+                .HasConversion(ethereumAddressConverter);
             entity.HasIndex(p => p.WalletAddress).IsUnique();
 
             entity
@@ -39,17 +49,32 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.HasIndex(c => new { c.PlayerId, c.Index }).IsUnique();
         });
 
-        modelBuilder
-            .Entity<ProcessedPurchase>()
-            .HasIndex(p => new { p.TxHash, p.LogIndex })
-            .IsUnique();
+        modelBuilder.Entity<ProcessedPurchase>(entity =>
+        {
+            modelBuilder
+                .Entity<ProcessedPurchase>()
+                .HasIndex(p => new { p.TxHash, p.LogIndex })
+                .IsUnique();
+
+            modelBuilder
+                .Entity<ProcessedPurchase>()
+                .Property(p => p.BuyerAddress)
+                .HasConversion(ethereumAddressConverter);
+            entity.HasIndex(p => p.BuyerAddress).IsUnique();
+        });
 
         modelBuilder.Entity<IndexerState>(entity =>
         {
             entity.Property(s => s.Id).ValueGeneratedNever();
             entity.ToTable(t => t.HasCheckConstraint("CK_IndexerState_SingletonId", "\"Id\" = 1"));
 
-            entity.HasData(new IndexerState { Id = 1, LastProcessedBlock = 72693190 });
+            entity.HasData(
+                new IndexerState
+                {
+                    Id = 1,
+                    LastProcessedBlock = (ulong)_blockchainOptions.ContractCreationBlock,
+                }
+            );
         });
     }
 }

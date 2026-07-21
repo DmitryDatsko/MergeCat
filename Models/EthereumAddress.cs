@@ -12,9 +12,9 @@ public class EthereumAddress : IEquatable<EthereumAddress>
 
     private EthereumAddress(string normalized) => Value = normalized;
 
-    public static bool TryParse(string? input, out EthereumAddress address)
+    public static bool TryParse(string? input, out EthereumAddress? address)
     {
-        address = default;
+        address = null;
         if (input is null || !HexPattern.IsMatch(input))
             return false;
 
