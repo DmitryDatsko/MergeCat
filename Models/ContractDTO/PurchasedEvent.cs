@@ -1,3 +1,4 @@
+using System.Numerics;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 
 namespace MergeCat.Models.ContractDTO;
@@ -15,10 +16,11 @@ public class PurchasedEvent : IEventDTO
     public byte Event { get; set; }
 
     [Parameter("uint256", "paid", 4, false)]
-    public ulong Paid { get; set; }
+    public BigInteger Paid { get; set; }
 
     [Parameter("uint256", "timestamp", 5, false)]
-    public DateTime Timestamp { get; set; }
+    public BigInteger TimestampRaw { get; set; }
 
     public EventType EventEnum => (EventType)Event;
+    public DateTime Timestamp => DateTimeOffset.FromUnixTimeSeconds((long)TimestampRaw).UtcDateTime;
 }

@@ -61,6 +61,17 @@ public class AppDbContext(
                 .Property(p => p.BuyerAddress)
                 .HasConversion(ethereumAddressConverter);
             entity.HasIndex(p => p.BuyerAddress).IsUnique();
+
+            modelBuilder
+                .Entity<ProcessedPurchase>()
+                .Property(p => p.TokenAddress)
+                .HasConversion(ethereumAddressConverter);
+            entity.HasIndex(p => p.TokenAddress).IsUnique();
+
+            modelBuilder
+                .Entity<ProcessedPurchase>()
+                .Property(p => p.PaidAmount)
+                .HasColumnType("numeric");
         });
 
         modelBuilder.Entity<IndexerState>(entity =>

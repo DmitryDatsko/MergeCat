@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -56,8 +57,9 @@ namespace MergeCat.Migrations
                     tx_hash = table.Column<string>(type: "text", nullable: false),
                     log_index = table.Column<int>(type: "integer", nullable: false),
                     buyer_address = table.Column<string>(type: "text", nullable: false),
+                    token_address = table.Column<string>(type: "text", nullable: false),
                     event_type = table.Column<byte>(type: "smallint", nullable: false),
-                    paid_amount = table.Column<decimal>(type: "numeric", nullable: false),
+                    paid_amount = table.Column<BigInteger>(type: "numeric", nullable: false),
                     block_timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
@@ -145,6 +147,12 @@ namespace MergeCat.Migrations
                 name: "ix_processed_purchases_buyer_address",
                 table: "processed_purchases",
                 column: "buyer_address",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_processed_purchases_token_address",
+                table: "processed_purchases",
+                column: "token_address",
                 unique: true);
 
             migrationBuilder.CreateIndex(

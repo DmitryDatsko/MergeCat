@@ -140,8 +140,9 @@ public class OnChainPurchaseIndexer : BackgroundService
                 TxHash = txHash,
                 LogIndex = logIndex,
                 BuyerAddress = EthereumAddress.Parse(log.Event.BuyerAddress),
+                TokenAddress = EthereumAddress.Parse(log.Event.TokenAddress),
                 EventType = eventType,
-                PaidAmount = log.Event.Paid / 1_000_000_000_000_000_000m,
+                PaidAmount = log.Event.Paid,
                 BlockTimestamp = blockTimestamp,
                 ProcessedAt = DateTime.UtcNow,
             }
