@@ -230,11 +230,9 @@ namespace MergeCat.Migrations
                         .HasName("pk_processed_purchases");
 
                     b.HasIndex("BuyerAddress")
-                        .IsUnique()
                         .HasDatabaseName("ix_processed_purchases_buyer_address");
 
                     b.HasIndex("TokenAddress")
-                        .IsUnique()
                         .HasDatabaseName("ix_processed_purchases_token_address");
 
                     b.HasIndex("TxHash", "LogIndex")

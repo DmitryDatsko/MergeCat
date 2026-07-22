@@ -60,13 +60,13 @@ public class AppDbContext(
                 .Entity<ProcessedPurchase>()
                 .Property(p => p.BuyerAddress)
                 .HasConversion(ethereumAddressConverter);
-            entity.HasIndex(p => p.BuyerAddress).IsUnique();
+            entity.HasIndex(p => p.BuyerAddress);
 
             modelBuilder
                 .Entity<ProcessedPurchase>()
                 .Property(p => p.TokenAddress)
                 .HasConversion(ethereumAddressConverter);
-            entity.HasIndex(p => p.TokenAddress).IsUnique();
+            entity.HasIndex(p => p.TokenAddress);
 
             modelBuilder
                 .Entity<ProcessedPurchase>()

@@ -146,14 +146,12 @@ namespace MergeCat.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_processed_purchases_buyer_address",
                 table: "processed_purchases",
-                column: "buyer_address",
-                unique: true);
+                column: "buyer_address");
 
             migrationBuilder.CreateIndex(
                 name: "ix_processed_purchases_token_address",
                 table: "processed_purchases",
-                column: "token_address",
-                unique: true);
+                column: "token_address");
 
             migrationBuilder.CreateIndex(
                 name: "ix_processed_purchases_tx_hash_log_index",

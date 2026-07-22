@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MergeCat.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260722115800_InitialMigration")]
+    [Migration("20260722121143_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -233,11 +233,9 @@ namespace MergeCat.Migrations
                         .HasName("pk_processed_purchases");
 
                     b.HasIndex("BuyerAddress")
-                        .IsUnique()
                         .HasDatabaseName("ix_processed_purchases_buyer_address");
 
                     b.HasIndex("TokenAddress")
-                        .IsUnique()
                         .HasDatabaseName("ix_processed_purchases_token_address");
 
                     b.HasIndex("TxHash", "LogIndex")
