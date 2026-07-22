@@ -54,16 +54,20 @@ public class PlayerController(
 
         balanceService.CollectEarning(player);
         var league = LeagueExtensions.FromTotalEarned(player.TotalEarned);
+        var (claimable, bonus) = balanceService.PreviewEarnings(player);
 
         await db.SaveChangesAsync();
 
         return Ok(
-            new CollectResponse(
+            new ProfileResponse(
                 player.Balance,
                 player.IncomeRate,
                 player.TotalEarned,
                 player.LastCollectedAt,
                 league.ToString(),
+                claimable,
+                bonus,
+                bonus >= _gameOptions.MinBonusThresholdGold,
                 player.BoostExpiresAt,
                 player.BoostActivatedAt
             )
