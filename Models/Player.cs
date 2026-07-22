@@ -12,6 +12,7 @@ public class Player
     public int DailyPurchases { get; set; }
     public League League { get; set; }
     public DateTime LastCollectedAt { get; set; }
+    public DateTime? BoostActivatedAt { get; set; } = null;
     public DateTime? BoostExpiresAt { get; set; } = null;
     public DateOnly LastPurchaseDate { get; set; }
 

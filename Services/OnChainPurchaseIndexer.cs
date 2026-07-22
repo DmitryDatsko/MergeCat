@@ -157,10 +157,13 @@ public class OnChainPurchaseIndexer : BackgroundService
         balanceService.CollectEarning(player);
 
         var now = DateTime.UtcNow;
+        var isStacking = player.BoostExpiresAt.HasValue && player.BoostExpiresAt > now;
 
-        player.BoostExpiresAt =
-            player.BoostExpiresAt.HasValue && player.BoostExpiresAt > now
-                ? player.BoostExpiresAt.Value.Add(boostDuration)
-                : now.Add(boostDuration);
+        player.BoostExpiresAt = isStacking
+            ? player.BoostExpiresAt!.Value.Add(boostDuration)
+            : now.Add(boostDuration);
+
+        if (!isStacking)
+            player.BoostActivatedAt = now;
     }
 }

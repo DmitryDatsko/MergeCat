@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MergeCat.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260721230317_InitialMigration")]
+    [Migration("20260722012752_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -129,6 +129,10 @@ namespace MergeCat.Migrations
                     b.Property<double>("Balance")
                         .HasColumnType("double precision")
                         .HasColumnName("balance");
+
+                    b.Property<DateTime?>("BoostActivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("boost_activated_at");
 
                     b.Property<DateTime?>("BoostExpiresAt")
                         .HasColumnType("timestamp with time zone")

@@ -39,7 +39,8 @@ public class PlayerController(
                 claimable,
                 bonus,
                 bonus >= _gameOptions.MinBonusThresholdGold,
-                player.BoostExpiresAt
+                player.BoostExpiresAt,
+                player.BoostActivatedAt
             )
         );
     }
@@ -63,7 +64,8 @@ public class PlayerController(
                 player.TotalEarned,
                 player.LastCollectedAt,
                 league.ToString(),
-                player.BoostExpiresAt
+                player.BoostExpiresAt,
+                player.BoostActivatedAt
             )
         );
     }

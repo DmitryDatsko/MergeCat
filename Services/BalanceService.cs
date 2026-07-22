@@ -29,20 +29,35 @@ public class BalanceService : IBalanceService
     public void CollectEarning(Player player)
     {
         var (claimedGold, _) = PreviewEarnings(player);
+        var now = DateTime.UtcNow;
 
         player.Balance += claimedGold;
         player.TotalEarned += claimedGold;
-        player.LastCollectedAt = DateTime.UtcNow;
+
+        if (player.BoostExpiresAt.HasValue && player.BoostExpiresAt <= now)
+        {
+            player.BoostExpiresAt = null;
+            player.BoostActivatedAt = null;
+        }
+
+        player.LastCollectedAt = now;
     }
 
     public void CollectWithBonus(Player player)
     {
         var (claimedGold, bonusGold) = PreviewEarnings(player);
         var total = claimedGold + bonusGold;
+        var now = DateTime.UtcNow;
+
+        if (player.BoostExpiresAt.HasValue && player.BoostExpiresAt <= now)
+        {
+            player.BoostExpiresAt = null;
+            player.BoostActivatedAt = null;
+        }
 
         player.Balance += total;
         player.TotalEarned += total;
-        player.LastCollectedAt = DateTime.UtcNow;
+        player.LastCollectedAt = now;
     }
 
     public (double ClaimableGold, double BonusGold) PreviewEarnings(Player player)

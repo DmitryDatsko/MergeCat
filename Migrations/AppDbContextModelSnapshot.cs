@@ -127,6 +127,10 @@ namespace MergeCat.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("balance");
 
+                    b.Property<DateTime?>("BoostActivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("boost_activated_at");
+
                     b.Property<DateTime?>("BoostExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("boost_expires_at");

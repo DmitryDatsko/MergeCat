@@ -6,5 +6,6 @@ public record CollectResponse(
     double TotalEarned,
     DateTime LastCollectedAt,
     string League,
-    DateTime? BoostExpiresAt
+    DateTime? BoostExpiresAt,
+    DateTime? BoostActivatedAt
 );

@@ -9,5 +9,6 @@ public record ProfileResponse(
     double ClaimableGold,
     double BonusGold,
     bool BonusClaimAvailable,
-    DateTime? BoostExpiresAt
+    DateTime? BoostExpiresAt,
+    DateTime? BoostActivatedAt
 );

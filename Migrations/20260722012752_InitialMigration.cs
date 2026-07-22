@@ -37,6 +37,7 @@ namespace MergeCat.Migrations
                     daily_purchases = table.Column<int>(type: "integer", nullable: false),
                     league = table.Column<string>(type: "text", nullable: false),
                     last_collected_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    boost_activated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     boost_expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     last_purchase_date = table.Column<DateOnly>(type: "date", nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
