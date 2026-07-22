@@ -1,6 +1,7 @@
 using MergeCat.Context;
 using MergeCat.Models;
 using MergeCat.Models.ContractDTO;
+using MergeCat.Models.DTO;
 using MergeCat.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -10,27 +11,19 @@ using Nethereum.Web3;
 
 namespace MergeCat.Services;
 
-public class OnChainPurchaseIndexer : BackgroundService
+public class OnChainPurchaseIndexer(
+    IServiceScopeFactory scopeFactory,
+    Web3 web3,
+    IOptions<BlockchainOptions> options,
+    ILogger<OnChainPurchaseIndexer> logger
+) : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly Web3 _web3;
-    private readonly ILogger<OnChainPurchaseIndexer> _logger;
-    private readonly BlockchainOptions _options;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly Web3 _web3 = web3;
+    private readonly ILogger<OnChainPurchaseIndexer> _logger = logger;
+    private readonly BlockchainOptions _options = options.Value;
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
-
-    public OnChainPurchaseIndexer(
-        IServiceScopeFactory scopeFactory,
-        Web3 web3,
-        IOptions<BlockchainOptions> options,
-        ILogger<OnChainPurchaseIndexer> logger
-    )
-    {
-        _scopeFactory = scopeFactory;
-        _web3 = web3;
-        _options = options.Value;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -54,6 +47,7 @@ public class OnChainPurchaseIndexer : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
+        var notificationHub = scope.ServiceProvider.GetRequiredService<PurchaseNotificationHub>();
         var state = await db.IndexerStates.FirstOrDefaultAsync(ct);
 
         var latestBlock = (await _web3.Eth.Blocks.GetBlockNumber.SendRequestAsync()).Value;
@@ -72,15 +66,24 @@ public class OnChainPurchaseIndexer : BackgroundService
         );
 
         var logs = await purchasedEvent.GetAllChangesAsync(filter);
+        var pendingNotifications =
+            new List<(string walletAddress, ContractEventResponse Payload)>();
 
         foreach (var log in logs)
-            await HandlePurchaseEventAsync(db, balanceService, log, ct);
+        {
+            var notification = await HandlePurchaseEventAsync(db, balanceService, log, ct);
+            if (notification is not null)
+                pendingNotifications.Add(notification.Value);
+        }
 
         state.LastProcessedBlock = toBlock;
         await db.SaveChangesAsync(ct);
+
+        foreach (var (wallet, payload) in pendingNotifications)
+            notificationHub.Publish(wallet, payload);
     }
 
-    private async Task HandlePurchaseEventAsync(
+    private async Task<(string Wallet, ContractEventResponse Payload)?> HandlePurchaseEventAsync(
         AppDbContext db,
         IBalanceService balanceService,
         EventLog<PurchasedEvent> log,
@@ -95,7 +98,7 @@ public class OnChainPurchaseIndexer : BackgroundService
             ct
         );
         if (alreadyProduced)
-            return;
+            return null;
 
         var buyerAddress = log.Event.BuyerAddress.ToLower();
         var player = await db.Players.FirstOrDefaultAsync(p => p.WalletAddress == buyerAddress, ct);
@@ -107,7 +110,7 @@ public class OnChainPurchaseIndexer : BackgroundService
                 log.Event.BuyerAddress,
                 txHash
             );
-            return;
+            return null;
         }
 
         var eventType = log.Event.EventEnum;
@@ -147,6 +150,17 @@ public class OnChainPurchaseIndexer : BackgroundService
                 ProcessedAt = DateTime.UtcNow,
             }
         );
+
+        var payload = new ContractEventResponse
+        {
+            BuyerAddress = buyerAddress,
+            EventType = eventType,
+            TxHash = txHash,
+            PaidAmount = log.Event.Paid,
+            BlockTimestamp = blockTimestamp,
+        };
+
+        return (buyerAddress, payload);
     }
 
     private static void ApplyBoost(

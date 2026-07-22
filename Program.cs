@@ -1,9 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using MergeCat.Context;
+using MergeCat.Endpoints;
 using MergeCat.Options;
 using MergeCat.Services;
-using MergeCat.Services.Token;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.EntityFrameworkCore;
@@ -96,7 +96,7 @@ builder.Services.AddSingleton(sp =>
     var options = sp.GetRequiredService<IOptions<BlockchainOptions>>().Value;
     return new Web3(options.RpcUrl);
 });
-builder.Services.AddSingleton<IUserIdentity, UserIdentity>();
+builder.Services.AddSingleton<PurchaseNotificationHub>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddMemoryCache();
 
@@ -114,6 +114,7 @@ app.UseCookiePolicy(
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapNotificationEndpoints();
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())
