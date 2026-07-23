@@ -4,6 +4,7 @@ using MergeCat.Options;
 using MergeCat.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace MergeCat.Controllers;
@@ -72,5 +73,30 @@ public class PlayerController(
                 player.BoostActivatedAt
             )
         );
+    }
+
+    [HttpGet("leaderboard")]
+    public async Task<IActionResult> Leaderboard(
+        [FromQuery] int page,
+        [FromQuery] int pageSize = 20
+    )
+    {
+        if (page <= 0 || pageSize <= 0)
+            return Conflict(new { message = "Page number must be greater than zero" });
+
+        pageSize = Math.Min(pageSize, 100);
+
+        var dto = await db
+            .Players.OrderByDescending(p => p.TotalEarned)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new LeaderboardResponse(
+                p.WalletAddress,
+                p.TotalEarned,
+                LeagueExtensions.FromTotalEarned(p.TotalEarned)
+            ))
+            .ToListAsync();
+
+        return Ok(dto);
     }
 }
