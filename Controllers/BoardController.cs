@@ -1,5 +1,4 @@
 using MergeCat.Context;
-using MergeCat.Filters;
 using MergeCat.Models;
 using MergeCat.Models.DTO;
 using MergeCat.Options;
@@ -23,10 +22,9 @@ public class BoardController(
     private readonly GameOptions _gameOptions = gameOptions.Value;
 
     [HttpGet("get-board")]
-    [ServiceFilter(typeof(BonusGuardFilter))]
     public async Task<IActionResult> Board()
     {
-        var player = CurrentPlayer;
+        var player = await db.Players.FindAsync(CurrentPlayerId);
         if (player is null)
             return NotFound("Player not found");
 
@@ -37,7 +35,6 @@ public class BoardController(
     }
 
     [HttpPost("merge")]
-    [ServiceFilter(typeof(BonusGuardFilter))]
     public async Task<IActionResult> Merge([FromBody] MergeRequest request)
     {
         if (request.FromIndex is < 0 or > 11 || request.ToIndex is < 0 or > 11)
@@ -63,7 +60,7 @@ public class BoardController(
         if (fromIndex.UnitLevel != toIndex.UnitLevel)
             return Conflict(new { message = "Units must be the same level to merge" });
 
-        var player = CurrentPlayer;
+        var player = await db.Players.FindAsync(CurrentPlayerId);
         if (player is null)
             return NotFound(new { message = "User not found" });
         balanceService.CollectEarning(player);
@@ -90,7 +87,6 @@ public class BoardController(
     }
 
     [HttpGet("get-prices")]
-    [ServiceFilter(typeof(BonusGuardFilter))]
     public async Task<IActionResult> Prices()
     {
         var maxLevel =
@@ -104,8 +100,21 @@ public class BoardController(
             .Select(p => p.DailyPurchases)
             .FirstOrDefaultAsync();
 
+        if (maxLevel == 0)
+            return Ok(
+                new[]
+                {
+                    new
+                    {
+                        Level = 1,
+                        Price = CalculateUnitCost(1, boughtAmount),
+                        Speed = CalculateIncome(1),
+                    },
+                }
+            );
+
         var prices = Enumerable
-            .Range(1, Math.Max(1, maxLevel))
+            .Range(1, maxLevel)
             .Select(k => new
             {
                 Level = k,
@@ -118,7 +127,6 @@ public class BoardController(
     }
 
     [HttpPost("buy-unit")]
-    [ServiceFilter(typeof(BonusGuardFilter))]
     public async Task<IActionResult> BuyUnit([FromBody] BuyUnitRequest request)
     {
         const int maxRetries = 3;
@@ -185,7 +193,6 @@ public class BoardController(
     }
 
     [HttpPost("move")]
-    [ServiceFilter(typeof(BonusGuardFilter))]
     public async Task<IActionResult> Move([FromBody] MergeRequest request)
     {
         if (request.FromIndex is < 0 or > 11 || request.ToIndex is < 0 or > 11)
@@ -194,7 +201,7 @@ public class BoardController(
         if (request.FromIndex == request.ToIndex)
             return BadRequest(new { message = "Cannot move a cell to itself" });
 
-        var player = CurrentPlayer;
+        var player = await db.Players.FindAsync(CurrentPlayerId);
         if (player is null)
             return NotFound("Player not found");
 
