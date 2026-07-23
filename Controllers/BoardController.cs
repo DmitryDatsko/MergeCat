@@ -100,21 +100,8 @@ public class BoardController(
             .Select(p => p.DailyPurchases)
             .FirstOrDefaultAsync();
 
-        if (maxLevel == 0)
-            return Ok(
-                new[]
-                {
-                    new
-                    {
-                        Level = 1,
-                        Price = CalculateUnitCost(1, boughtAmount),
-                        Speed = CalculateIncome(1),
-                    },
-                }
-            );
-
         var prices = Enumerable
-            .Range(1, maxLevel)
+            .Range(1, Math.Max(1, maxLevel))
             .Select(k => new
             {
                 Level = k,
