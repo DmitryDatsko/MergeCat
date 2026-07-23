@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using MergeCat.Context;
 using MergeCat.Endpoints;
+using MergeCat.Filters;
 using MergeCat.Options;
 using MergeCat.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -98,6 +99,7 @@ builder.Services.AddSingleton(sp =>
 });
 builder.Services.AddSingleton<PurchaseNotificationHub>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
+builder.Services.AddScoped<BonusGuardFilter>();
 builder.Services.AddMemoryCache();
 
 var app = builder.Build();
