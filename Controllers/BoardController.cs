@@ -178,6 +178,36 @@ public class BoardController(
         return Conflict(new { message = "Please retry" });
     }
 
+    [HttpPost("remove-unit")]
+    public async Task<IActionResult> Remove([FromBody] int index)
+    {
+        if (index is < 0 or > 11)
+            return BadRequest(new { message = "Cell index must be between 0 and 11" });
+
+        var player = await db.Players.FindAsync(CurrentPlayerId);
+        if (player is null)
+            return NotFound("Player not found");
+
+        var cell = await db
+            .Cells.Where(c => c.PlayerId == CurrentPlayerId && c.Index == index)
+            .FirstOrDefaultAsync();
+
+        if (cell is null)
+            return NotFound(new { message = "One or both cells not found" });
+
+        if (cell.UnitLevel <= 0)
+            return Conflict(new { message = "Remove only possible when index contains unit" });
+
+        balanceService.CollectEarning(player);
+        var removeIncome = CalculateIncome(cell.UnitLevel);
+        cell.UnitLevel = 0;
+        player.IncomeRate -= removeIncome;
+
+        await db.SaveChangesAsync();
+
+        return Ok(await BuildBoardResponse(player));
+    }
+
     [HttpPost("move")]
     public async Task<IActionResult> Move([FromBody] MergeRequest request)
     {
