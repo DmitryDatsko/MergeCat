@@ -17,7 +17,6 @@ using Nethereum.Signer;
 namespace MergeCat.Controllers;
 
 [ApiController]
-[Route("auth")]
 public class AuthController(
     IOptions<JwtOptions> jwtOptions,
     IOptions<GameOptions> gameOptions,

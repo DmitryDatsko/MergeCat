@@ -12,7 +12,6 @@ namespace MergeCat.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("player")]
 public class PlayerController(
     AppDbContext db,
     IBalanceService balanceService,

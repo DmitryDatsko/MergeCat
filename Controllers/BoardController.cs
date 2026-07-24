@@ -12,7 +12,6 @@ namespace MergeCat.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("board")]
 public class BoardController(
     AppDbContext db,
     IOptions<GameOptions> gameOptions,
