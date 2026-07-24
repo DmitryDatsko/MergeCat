@@ -88,16 +88,25 @@ public class PlayerController(
         pageSize = Math.Min(pageSize, 100);
 
         var startRank = (page - 1) * pageSize + 1;
-        var players = await db
+        var rawPlayers = await db
             .Players.Where(p => p.League == league)
             .OrderByDescending(p => p.TotalEarned)
             .Skip((page - 1) * pageSize)
             .Take(pageSize + 1)
+            .Select(p => new
+            {
+                p.WalletAddress,
+                p.TotalEarned,
+                p.League,
+            })
+            .ToListAsync();
+
+        var players = rawPlayers
             .Select(
                 (p, i) =>
                     new LeaderboardInstance(p.WalletAddress, p.TotalEarned, p.League, startRank + i)
             )
-            .ToListAsync();
+            .ToList();
 
         bool hasMore = players.Count > pageSize;
         if (hasMore)
