@@ -87,18 +87,33 @@ public class PlayerController(
 
         pageSize = Math.Min(pageSize, 100);
 
+        var startRank = (page - 1) * pageSize + 1;
         var players = await db
             .Players.Where(p => p.League == league)
             .OrderByDescending(p => p.TotalEarned)
             .Skip((page - 1) * pageSize)
             .Take(pageSize + 1)
-            .Select(p => new LeaderboardInstance(p.WalletAddress, p.TotalEarned, p.League))
+            .Select(
+                (p, i) =>
+                    new LeaderboardInstance(p.WalletAddress, p.TotalEarned, p.League, startRank + i)
+            )
             .ToListAsync();
 
         bool hasMore = players.Count > pageSize;
         if (hasMore)
             players.RemoveAt(players.Count - 1);
 
-        return Ok(new LeaderboardResponse(players, league.Threshold(), hasMore));
+        var player = await db.Players.FindAsync(CurrentPlayerId);
+        int? playerRank = null;
+
+        if (player is not null && player.League == league)
+        {
+            var higherCount = await db
+                .Players.Where(p => p.League == league && p.TotalEarned > player.TotalEarned)
+                .CountAsync();
+            playerRank = higherCount + 1;
+        }
+
+        return Ok(new LeaderboardResponse(players, league.Threshold(), playerRank, hasMore));
     }
 }

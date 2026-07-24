@@ -1,3 +1,3 @@
 namespace MergeCat.Models.DTO;
 
-public record LeaderboardInstance(string Address, double TotalEarned, League League);
+public record LeaderboardInstance(string Address, double TotalEarned, League League, int Rank);

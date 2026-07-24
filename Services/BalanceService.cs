@@ -33,6 +33,7 @@ public class BalanceService : IBalanceService
 
         player.Balance += claimedGold;
         player.TotalEarned += claimedGold;
+        player.League = LeagueExtensions.FromTotalEarned(player.TotalEarned);
 
         if (player.BoostExpiresAt.HasValue && player.BoostExpiresAt <= now)
         {
@@ -58,6 +59,7 @@ public class BalanceService : IBalanceService
         player.Balance += total;
         player.TotalEarned += total;
         player.LastCollectedAt = now;
+        player.League = LeagueExtensions.FromTotalEarned(player.TotalEarned);
     }
 
     public (double ClaimableGold, double BonusGold) PreviewEarnings(Player player)
