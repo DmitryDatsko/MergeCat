@@ -78,7 +78,7 @@ builder.Services.AddCors(options =>
                     builder.Environment.IsProduction()
                         ?
                         [
-                            "http://localhost:3000", // temporary same as dev
+                            "https://mergecat.duckdns.org",
                             "https://lilac-placate-handgun.ngrok-free.dev",
                         ]
                         : ["http://localhost:3000", "https://lilac-placate-handgun.ngrok-free.dev"]
@@ -106,7 +106,7 @@ app.UseCors(myAllowSpecificOrigins);
 app.UseCookiePolicy(
     new CookiePolicyOptions
     {
-        MinimumSameSitePolicy = SameSiteMode.None,
+        MinimumSameSitePolicy = SameSiteMode.Lax,
         HttpOnly = HttpOnlyPolicy.Always,
         Secure = CookieSecurePolicy.Always,
     }
