@@ -1,0 +1,32 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull latest changes
+        run: |
+          cd /opt/merge-cat-project/backend
+          git pull origin main
+
+      - name: Build images
+        run: |
+          cd /opt/merge-cat-project/backend
+          docker compose build backend --no-cache
+      - name: Restart containers
+        run: |
+          cd /opt/merge-cat-project/backend
+          docker compose up -d backend
+      - name: Health check 
+        run: |
+          sleep 5
+          cd /opt/merge-cat-project/backend
+          docker compose ps
