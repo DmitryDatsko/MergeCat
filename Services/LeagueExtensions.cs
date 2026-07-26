@@ -8,10 +8,10 @@ public static class LeagueExtensions
         league switch
         {
             League.Bronze => 0,
-            League.Silver => 1_000,
-            League.Gold => 10_000,
-            League.Emerald => 100_000,
-            League.Sapphire => 1_000_000,
+            League.Silver => 500_000,
+            League.Gold => 1_000_000,
+            League.Emerald => 10_000_000,
+            League.Sapphire => 100_000_000,
             League.Amethyst => 1_000_000_000,
             _ => throw new NotImplementedException(),
         };
