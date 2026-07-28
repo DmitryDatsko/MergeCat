@@ -155,11 +155,11 @@ public class BoardController(
                 bool isNewDay = player.LastPurchaseDate < today;
                 int purchases = isNewDay ? 0 : player.DailyPurchases;
 
-                double unitCost = CalculateUnitCost(request.Level, ++purchases);
+                double unitCost = CalculateUnitCost(request.Level, purchases);
                 if (player.Balance < unitCost)
                     return Conflict(new { message = "Insufficient balance" });
 
-                player.DailyPurchases = purchases;
+                player.DailyPurchases++;
                 player.LastPurchaseDate = today;
                 emptyCell.UnitLevel = request.Level;
                 player.Balance -= unitCost;
