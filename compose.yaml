@@ -1,0 +1,64 @@
+services:
+  backend_mr:
+    build: .
+    image: mergecat-backend:latest
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - 8082:8082
+    environment:
+      - ConnectionStrings__DefaultConnection=${CONNECTION_STRING}
+      - EnvVariables__CookieName=${COOKIE_NAME}
+      - EnvVariables__JwtTokenSecret=${JWT_TOKEN_SECRET}
+      - EnvVariables__Issuer=${ISSUER}
+      - EnvVariables__Audience=${AUDIENCE}
+      - EnvVariables__BoardSize=${BOARD_SIZE}
+      - EnvVariables__StartingBalance=${STARTING_BALANCE}
+      - EnvVariables__UnitBaseCost=${UNIT_BASE_COST}
+      - EnvVariables__CostGrowthRate=${COST_GROWTH_RATE}
+      - EnvVariables__IncomeBaseRate=${INCOME_BASE_RATE}
+      - EnvVariables__IncomeGrowthRate=${INCOME_GROWTH_RATE}
+      - ASPNETCORE_URLS=http://+:8082
+    networks:
+      - web
+      - proxy
+
+  frontend_mr:
+    build:
+      context: ../frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_RPC_URL=${NEXT_PUBLIC_RPC_URL}
+    image: mergecat-frontend:latest
+    restart: unless-stopped
+    environment:
+      - API_URL_INTERNAL=http://backend_mr:8082
+    depends_on:
+      - backend_mr
+    networks:
+      - web
+      - proxy
+
+  db:
+    image: postgres
+    restart: always
+    container_name: merge_cat_database
+    ports:
+      - 5433:5432
+    volumes:
+      - merge_cat_db:/var/lib/postgresql
+    environment:
+      POSTGRES_PASSWORD: kYWX7kBj
+      POSTGRES_DB: MergeCat
+    networks:
+      - web
+
+networks:
+  web:
+  proxy:
+    external: true
+
+volumes:
+  caddy_data:
+  merge_cat_db:
