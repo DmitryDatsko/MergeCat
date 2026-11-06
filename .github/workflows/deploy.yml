@@ -20,11 +20,11 @@ jobs:
       - name: Build images
         run: |
           cd /opt/merge-cat-project/backend
-          docker compose build backend --no-cache
+          docker compose build backend_mr --no-cache
       - name: Restart containers
         run: |
           cd /opt/merge-cat-project/backend
-          docker compose up -d backend
+          docker compose up -d backend_mr
       - name: Health check 
         run: |
           sleep 5
